@@ -22,14 +22,20 @@ class BaseCls(nn.Module):
         if cls_args is not None:
             in_channels = self.encoder.out_channels if hasattr(self.encoder, 'out_channels') else cls_args.get('in_channels', None)
             cls_args.in_channels = in_channels
-            self.prediction = build_model_from_cfg(cls_args)
+            # self.prediction = build_model_from_cfg(cls_args) # tfj
+            self.fully_connect1 = nn.Linear(512, 256) # tfj
+            self.fully_connect2 = nn.Linear(256, 1) # tfj
         else:
             self.prediction = nn.Identity()
         self.criterion = build_criterion_from_cfg(criterion_args) if criterion_args is not None else None
 
-    def forward(self, data):
-        global_feat = self.encoder.forward_cls_feat(data)
-        return self.prediction(global_feat)
+    def forward(self, data1,data2):
+        global_feat1 = self.encoder.forward_cls_feat(data1)
+        global_feat2 = self.encoder.forward_cls_feat(data2)
+        x = torch.abs(global_feat1-global_feat2)
+        x = self.fully_connect1(x)
+        x = self.fully_connect2(x)
+        return x # self.prediction(global_feat)
 
     def get_loss(self, pred, gt, inputs=None):
         return self.criterion(pred, gt.long())
